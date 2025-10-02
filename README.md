@@ -29,9 +29,11 @@ You can extend this graph to orchestrate more complex agentic workflows that can
 ## Getting Started
 
 1. Install dependencies, along with the [LangGraph CLI](https://langchain-ai.github.io/langgraph/concepts/langgraph_cli/), which will be used to run the server.
-
 ```bash
-cd path/to/your/app
+..\..\..\react\Scripts\activate
+```
+```bash
+cd .\Agent-Voyage-Langraph\
 pip install -e . "langgraph-cli[inmem]"
 ```
 

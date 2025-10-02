@@ -1,4 +1,4 @@
-"""LangGraph single-node graph template.
+"""LangGraph single-node graph template.Voyage
 
 Returns a predefined response. Replace logic and configuration as needed.
 """
