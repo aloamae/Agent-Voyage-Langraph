@@ -56,6 +56,14 @@ LANGSMITH_API_KEY=lsv2...
 langgraph dev
 ```
 
+
+```powershell
+Get-Process | Where-Object { $_.Name -like "*langgraph*" } | ForEach-Object { Stop-Process -Id $_.Id -Force }
+
+Get-Process | Where-Object { $_.Name -like "*langgraph*" } | ForEach-Object { Stop-Process -Id $_.Id -Force }
+ | ForEach-Object { Stop-Process -Id $_.Id -Force }
+Get-Process | Where-Object { $_.Name -like "*langgraph*" } | ForEach-Object { Stop-Process -Id $_.Id -Force }
+```
 For more information on getting started with LangGraph Server, [see here](https://langchain-ai.github.io/langgraph/tutorials/langgraph-platform/local-server/).
 
 ## How to customize
