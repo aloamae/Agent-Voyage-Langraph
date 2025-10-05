@@ -45,15 +45,7 @@ from langgraph.graph import START, StateGraph, END
 # =============================
 
 
-@dataclass
-class State(Criteres):
-...
-Etat de l'agent
-message utilisateur: str - *
-message_ia: str - **
-injection: bool - False
-erreur_ia: bool - False
-done: bool - False
+
 
 
 @dataclass
