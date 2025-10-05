@@ -1,84 +1,167 @@
 # Nouveau projet LangGraph + Mistral
 
+Ce template est utilisé dans le cadre des formations **LBKE** à [LangChain et LangGraph](https://www.lbke.fr/formations/developpeur-llm-langgraph-langchain/cpf).
 
-Ce template est utilisé dans le cadre des formations LBKE à [LangChain et LangGraph](https://www.lbke.fr/formations/developpeur-llm-langgraph-langchain/cpf).
+### Différences avec le template de base
+- Connexion avec **Mistral** déjà prête.
+- Version fixée pour le CLI **LangGraph (>= 0.6.0)** pour accéder à la Runtime.
+- Fichier **Render.yaml** inclus pour faciliter le déploiement gratuit sur Render.
+- Workflows GitHub **désactivés par défaut**.
 
-Différence avec le template de base :
-- Connexion avec Mistral déjà prête
-- Version fixée pour le CLI LangGraph (>= 0.6.0 pour accéder à la Runtime)
-- Render.yaml pour faciliter le déploiement d'une instance gratuite
-- Workflows github désactivés par défaut
+---
 
-<!--
+# Agent (LangGraph) — README d’installation
 
-[![CI](https://github.com/langchain-ai/new-langgraph-project/actions/workflows/unit-tests.yml/badge.svg)](https://github.com/langchain-ai/new-langgraph-project/actions/workflows/unit-tests.yml)
-[![Integration Tests](https://github.com/langchain-ai/new-langgraph-project/actions/workflows/integration-tests.yml/badge.svg)](https://github.com/langchain-ai/new-langgraph-project/actions/workflows/integration-tests.yml)
+Ce dépôt est un **starter** pour créer un agent basé sur **LangGraph** et **LangChain** avec Mistral. Le fichier `pyproject.toml` fourni (ci‑dessous) définit les dépendances de base, les extras de dev et la configuration de packaging.
 
--->
+> Python requis : **3.9+**
 
-This template demonstrates a simple application implemented using [LangGraph](https://github.com/langchain-ai/langgraph), designed for showing how to get started with [LangGraph Server](https://langchain-ai.github.io/langgraph/concepts/langgraph_server/#langgraph-server) and using [LangGraph Studio](https://langchain-ai.github.io/langgraph/concepts/langgraph_studio/), a visual debugging IDE.
+---
 
-<div align="center">
-  <img src="./static/studio_ui.png" alt="Graph view in LangGraph studio UI" width="75%" />
-</div>
+## 1) Prérequis
 
-The core logic defined in `src/agent/graph.py`, showcases an single-step application that responds with a fixed string and the configuration provided.
+- **Python 3.9+** (3.11/3.12 recommandé)
+- **Git**
+- Une **clé API Mistral** (variable d’environnement `MISTRAL_API_KEY`)
 
-You can extend this graph to orchestrate more complex agentic workflows that can be visualized and debugged in LangGraph Studio.
+Optionnel :
+- **uv** (gestionnaire rapide compatible PEP 517/518)
+- ou **pip** classique
 
-## Getting Started
+---
 
-1. Install dependencies, along with the [LangGraph CLI](https://langchain-ai.github.io/langgraph/concepts/langgraph_cli/), which will be used to run the server.
-```bash
-..\..\..\react\Scripts\activate
-```
-```bash
-cd .\Agent-Voyage-Langraph\
-pip install -e . "langgraph-cli[inmem]"
-```
-
-2. (Optional) Customize the code and project as needed. Create a `.env` file if you need to use secrets.
+## 2) Cloner le projet
 
 ```bash
-cp .env.example .env
+git clone <votre-repo-ou-ce-starter> agent
+cd agent
 ```
 
-If you want to enable LangSmith tracing, add your LangSmith API key to the `.env` file.
+---
 
-```text
-# .env
-LANGSMITH_API_KEY=lsv2...
+## 3) Configuration de l’environnement
+
+### Option A — avec **uv** (recommandé)
+
+```bash
+uv venv
+source .venv/bin/activate  # (Windows: .venv\Scripts\activate)
+uv sync
+uv sync --group dev
 ```
 
-3. Start the LangGraph Server.
+### Option B — avec **pip**
 
-```shell
+```bash
+python -m venv .venv
+source .venv/bin/activate  # (Windows: .venv\Scripts\activate)
+
+pip install -e .
+pip install '.[dev]' 'langgraph-cli[inmem]>=0.2.8' 'pytest>=8.3.5' 'anyio>=4.7.0'
+```
+
+---
+
+## 4) Variables d’environnement
+
+Créez un fichier **`.env`** à la racine :
+
+```env
+MISTRAL_API_KEY=sk-...
+LANGCHAIN_TRACING_V2=true
+LANGCHAIN_PROJECT=agent
+```
+
+> Le paquet `python-dotenv` charge automatiquement ces variables si vous appelez `load_dotenv()` dans votre code.
+
+---
+
+## 5) Lancer l’agent en local
+
+### Avec LangGraph CLI (mode dev)
+
+```bash
 langgraph dev
 ```
 
+➡️ Cela démarre une session locale de développement avec un **checkpointer en mémoire volatile** : la mémoire est conservée pendant la session mais perdue au redémarrage.
 
-```powershell
-Get-Process | Where-Object { $_.Name -like "*langgraph*" } | ForEach-Object { Stop-Process -Id $_.Id -Force }
+### Persistance simple (SQLite)
 
-Get-Process | Where-Object { $_.Name -like "*langgraph*" } | ForEach-Object { Stop-Process -Id $_.Id -Force }
- | ForEach-Object { Stop-Process -Id $_.Id -Force }
-Get-Process | Where-Object { $_.Name -like "*langgraph*" } | ForEach-Object { Stop-Process -Id $_.Id -Force }
+```python
+from langgraph.checkpoint.sqlite import SqliteSaver
+checkpointer = SqliteSaver.from_conn_string("checkpoints.sqlite")
+app = graph.compile(checkpointer=checkpointer)
 ```
-For more information on getting started with LangGraph Server, [see here](https://langchain-ai.github.io/langgraph/tutorials/langgraph-platform/local-server/).
 
-## How to customize
+---
 
-1. **Define runtime context**: Modify the `Context` class in the `graph.py` file to expose the arguments you want to configure per assistant. For example, in a chatbot application you may want to define a dynamic system prompt or LLM to use. For more information on runtime context in LangGraph, [see here](https://langchain-ai.github.io/langgraph/agents/context/?h=context#static-runtime-context).
+## 6) Organisation du code
 
-2. **Extend the graph**: The core logic of the application is defined in [graph.py](./src/agent/graph.py). You can modify this file to add new nodes, edges, or change the flow of information.
+```text
+src/
+  agent/
+    __init__.py   
+    graph.py         # définition des nœuds/edges
+   langgraph.json
+   render.yaml
 
-## Development
+---
 
-While iterating on your graph in LangGraph Studio, you can edit past state and rerun your app from previous states to debug specific nodes. Local changes will be automatically applied via hot reload.
+## 7) Tests & Qualité
 
-Follow-up requests extend the same thread. You can create an entirely new thread, clearing previous history, using the `+` button in the top right.
+```bash
+avec langgraph sur render.com
+```
 
-For more advanced features and examples, refer to the [LangGraph documentation](https://langchain-ai.github.io/langgraph/). These resources can help you adapt this template for your specific use case and build more sophisticated conversational agents.
+---
 
-LangGraph Studio also integrates with [LangSmith](https://smith.langchain.com/) for more in-depth tracing and collaboration with teammates, allowing you to analyze and optimize your chatbot's performance.
+## 8) Commandes rapides
+
+```bash
+uv venv && source .venv/bin/activate && uv sync && uv sync --group dev
+python -m venv .venv && source .venv/bin/activate && pip install -e . '.[dev]' 'langgraph-cli[inmem]>=0.2.8'
+langgraph dev
+pytest -q
+ruff check . && ruff format .
+mypy src
+```
+
+---
+
+## 9) Dépannage
+
+- **`langgraph: command not found`** → installez `langgraph-cli[inmem]`.
+- **Mémoire perdue après redémarrage**
+- **Erreur Mistral** → vérifiez `MISTRAL_API_KEY`.
+
+---
+
+## 10) Licence
+
+Licence **MIT** (voir `pyproject.toml`).
+
+---
+
+## 🔧 Comment personnaliser
+
+1. **Définir le contexte d’exécution** : modifiez la classe `Context` dans `graph.py` pour exposer les paramètres à configurer (prompt système, modèle LLM, etc.).
+   → [Documentation sur le runtime context](https://langchain-ai.github.io/langgraph/agents/context/?h=context#static-runtime-context)
+
+2. **Étendre le graphe** : ajoutez ou modifiez les nœuds et les liens dans `src/agent/graph.py` pour orchestrer des workflows plus complexes.
+
+---
+
+## 🧪 Développement
+
+En utilisant **LangGraph Studio**, vous pouvez :
+- éditer des états précédents et relancer des nœuds spécifiques ;
+- profiter du **hot reload** pour tester vos modifications ;
+- créer de nouveaux threads en un clic (`+`) ;
+- tracer et analyser les exécutions via **LangSmith**.
+
+📚 Pour aller plus loin :
+- [Documentation LangGraph](https://langchain-ai.github.io/langgraph/)
+- [LangGraph Studio](https://langchain-ai.github.io/langgraph/concepts/langgraph_studio/)
+- [LangSmith](https://smith.langchain.com/) pour le suivi et la collaboration.
 
