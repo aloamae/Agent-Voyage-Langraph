@@ -20,13 +20,19 @@ config = {"configurable": {"thread_id": thread_id}}
 
 
 async def run():
-    res1 = await agent_with_memory.ainvoke({"last_user_message": "Hello!"}, config=config)
+    res1 = await agent_with_memory.ainvoke({"last_user_message": "Je cherche des vacances à la montagne"}, config=config)
+    print("Réponse 1:", res1)
+    
     res2 = await agent_with_memory.ainvoke(
-        {"last_user_message": "My name is Eric"}, config=config)
+        {"last_user_message": "J'aime le sport"}, config=config)
+    print("Réponse 2:", res2)
+    
     res3 = await agent_with_memory.ainvoke(
-        {"last_user_message": "I teach LangChain"}, config=config)
+        {"last_user_message": "Est-ce accessible aux personnes handicapées?"}, config=config)
+    print("Réponse 3:", res3)
+    
     # Should display 3
-    print(agent_with_memory.get_state(config).values.get("message_count"))
+    print("Nombre de messages:", agent_with_memory.get_state(config).values.get("message_count"))
 
 if __name__ == "__main__":
     asyncio.run(run())
