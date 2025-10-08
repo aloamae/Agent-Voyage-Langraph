@@ -131,7 +131,7 @@ env.bak/
 venv.bak/
 .trae/
 .sphinx/
-sphinx//
+sphinx/
 
 
 # Spyder project settings
