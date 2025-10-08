@@ -3,7 +3,7 @@ Demo of running a multi-turn conversation with short-term memory
 The agent will behave the same as when using "langgraph dev" with LangGraph Studio
 """
 import asyncio
-from agent.graph import builder
+from .graph import builder
 from langgraph.checkpoint.memory import InMemorySaver
 from dotenv import load_dotenv
 load_dotenv()
