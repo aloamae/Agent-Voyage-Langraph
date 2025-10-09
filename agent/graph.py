@@ -4,16 +4,38 @@ Architecture minimaliste : 1 nœud unique
 Structured output : extraction de 6 critères booléens
 Catalogue : 5 voyages prédéfinis
 RESET obligatoire des critères à chaque tour
+
+INTÉGRATION LANGSMITH pour monitoring et traçabilité
 """
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
 from typing import Any, Dict, Optional
 
 from pydantic import BaseModel, Field
 from langchain.chat_models import init_chat_model
 from langgraph.graph import StateGraph, END
+from langsmith import traceable
+
+# =============================
+#   CONFIGURATION LANGSMITH
+# =============================
+
+# Variables d'environnement LangSmith (à définir dans .env)
+# LANGSMITH_API_KEY=votre_clé_api
+# LANGSMITH_PROJECT=voyage-agent-examen
+# LANGSMITH_TRACING=true
+
+# Vérification de la configuration LangSmith
+LANGSMITH_ENABLED = os.getenv("LANGSMITH_TRACING", "false").lower() == "true"
+
+if LANGSMITH_ENABLED:
+    print("✅ LangSmith activé - Traçage des opérations")
+    print(f"   Projet: {os.getenv('LANGSMITH_PROJECT', 'default')}")
+else:
+    print("⚠️  LangSmith désactivé - Définir LANGSMITH_TRACING=true")
 
 
 # =============================
@@ -149,8 +171,12 @@ Par exemple :
 #   FONCTIONS UTILITAIRES
 # =============================
 
+@traceable(name="match_criteres")
 def match_criteres(voyage: Dict, criteres: Dict) -> bool:
-    """Vérifie si un voyage correspond aux critères (logique simple)"""
+    """Vérifie si un voyage correspond aux critères (logique simple)
+    
+    Tracé dans LangSmith pour analyser la logique de matching
+    """
     for critere, valeur in criteres.items():
         if valeur is None:
             continue
@@ -181,8 +207,12 @@ def match_criteres(voyage: Dict, criteres: Dict) -> bool:
     return True
 
 
+@traceable(name="trouver_voyage")
 def trouver_voyage(criteres: Dict) -> Optional[Dict]:
-    """Retourne le voyage correspondant le mieux aux critères"""
+    """Retourne le voyage correspondant le mieux aux critères
+    
+    Tracé dans LangSmith pour analyser le processus de sélection
+    """
     # Trouver tous les voyages compatibles
     matches = []
     for voyage in VOYAGES:
@@ -234,8 +264,12 @@ def trouver_voyage(criteres: Dict) -> Optional[Dict]:
     return best
 
 
+@traceable(name="generer_reponse_llm")
 async def generer_reponse_llm(voyage: Dict, criteres: Dict, message: str) -> str:
-    """Génère une réponse naturelle avec le LLM"""
+    """Génère une réponse naturelle avec le LLM
+    
+    Tracé dans LangSmith pour monitorer les appels LLM et réponses
+    """
     model = init_chat_model("mistral-small-latest", model_provider="mistralai")
     
     # Filtrer les critères actifs (non-None)
@@ -257,6 +291,13 @@ async def generer_reponse_llm(voyage: Dict, criteres: Dict, message: str) -> str
 #   NŒUD UNIQUE (conforme examen)
 # =============================
 
+@traceable(
+    name="process_message",
+    metadata={
+        "node_type": "main_processor",
+        "description": "Nœud unique - Extraction + Matching + Génération"
+    }
+)
 async def process_message(state: State) -> Dict[str, Any]:
     """
     Nœud unique - Cycle complet conforme examen :
@@ -265,6 +306,8 @@ async def process_message(state: State) -> Dict[str, Any]:
     3. Application nouveaux critères
     4. Validation : all(None) ?
     5. Matching + génération réponse
+    
+    Entièrement tracé dans LangSmith pour analyse complète
     """
     message = state.dernier_message_utilisateur
     
@@ -274,6 +317,9 @@ async def process_message(state: State) -> Dict[str, Any]:
     
     prompt_extraction = PROMPT_EXTRACTION.format(message=message)
     extraits = await model_struct.ainvoke(prompt_extraction)
+    
+    # Log des critères extraits (visible dans LangSmith)
+    print(f"📊 Critères extraits: {extraits.dict()}")
     
     # 2. RESET OBLIGATOIRE des critères (pas d'héritage entre tours)
     nouveaux_criteres = {k: None for k in state.criteres}
@@ -285,6 +331,7 @@ async def process_message(state: State) -> Dict[str, Any]:
     
     # 4. VALIDATION : aucun critère rempli ?
     if all(v is None for v in nouveaux_criteres.values()):
+        print("⚠️  Aucun critère identifié - Demande de clarification")
         return {
             "dernier_message_ia": PROMPT_CLARIFICATION,
             "criteres": nouveaux_criteres
@@ -294,9 +341,11 @@ async def process_message(state: State) -> Dict[str, Any]:
     voyage = trouver_voyage(nouveaux_criteres)
     
     if voyage:
+        print(f"✅ Voyage trouvé: {voyage['nom']}")
         # Génération réponse avec LLM
         message_ia = await generer_reponse_llm(voyage, nouveaux_criteres, message)
     else:
+        print("❌ Aucun voyage correspondant aux critères")
         # Aucun voyage ne correspond
         message_ia = PROMPT_AUCUN_MATCH
     
@@ -311,7 +360,13 @@ async def process_message(state: State) -> Dict[str, Any]:
 # =============================
 
 def build_graph():
-    """Construit le graphe LangGraph minimaliste"""
+    """Construit le graphe LangGraph minimaliste
+    
+    Le graphe sera automatiquement tracé dans LangSmith via langgraph dev
+    
+    Note: Pas de checkpointer défini ici car langgraph dev gère 
+    automatiquement la persistance via sa plateforme.
+    """
     workflow = StateGraph(State)
     
     # 1 seul nœud
@@ -321,7 +376,14 @@ def build_graph():
     workflow.set_entry_point("process_message")
     workflow.add_edge("process_message", END)
     
-    return workflow.compile(name="Agent Voyage Examen")
+    # Compilation SANS checkpointer - géré automatiquement par langgraph dev
+    graph = workflow.compile(name="Agent Voyage Examen")
+    
+    if LANGSMITH_ENABLED:
+        print("🔍 Graphe compilé - Traçage actif dans LangSmith")
+        print("💾 Persistance gérée automatiquement par LangGraph API")
+    
+    return graph
 
 
 # Export pour langgraph dev
