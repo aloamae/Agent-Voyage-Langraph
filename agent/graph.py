@@ -9,8 +9,8 @@ INTÉGRATION LANGSMITH pour monitoring et traçabilité
 """
 
 from __future__ import annotations
-
 import os
+from dotenv import load_dotenv
 from dataclasses import dataclass, field
 from typing import Any, Dict, Optional
 
@@ -18,6 +18,15 @@ from pydantic import BaseModel, Field
 from langchain.chat_models import init_chat_model
 from langgraph.graph import StateGraph, END
 from langsmith import traceable
+# =============================
+#   CHARGEMENT .ENV (NOUVEAU)
+# =============================
+
+
+
+# Charger le fichier .env s'il existe
+# Par défaut, cherche .env dans le répertoire courant
+load_dotenv()
 
 # =============================
 #   CONFIGURATION LANGSMITH
@@ -28,14 +37,41 @@ from langsmith import traceable
 # LANGSMITH_PROJECT=voyage-agent-examen
 # LANGSMITH_TRACING=true
 
-# Vérification de la configuration LangSmith
-LANGSMITH_ENABLED = os.getenv("LANGSMITH_TRACING", "false").lower() == "true"
+# Lecture des variables LangSmith depuis .env
+LANGSMITH_TRACING = os.getenv("LANGSMITH_TRACING", "false")
+LANGSMITH_PROJECT = os.getenv("LANGSMITH_PROJECT", "voyage-agent-examen")
+LANGSMITH_API_KEY = os.getenv("LANGSMITH_API_KEY")
 
-if LANGSMITH_ENABLED:
-    print("✅ LangSmith activé - Traçage des opérations")
-    print(f"   Projet: {os.getenv('LANGSMITH_PROJECT', 'default')}")
+# Affichage de l'état de LangSmith (lecture depuis .env uniquement)
+if LANGSMITH_TRACING.lower() == "true":
+    LANGSMITH_ENABLED = True
+    print("✅ LangSmith activé depuis .env - Traçage des opérations")
+    print(f"   Projet: {LANGSMITH_PROJECT}")
+    
+    if not LANGSMITH_API_KEY:
+        print("⚠️  ATTENTION: LANGSMITH_API_KEY non définie dans .env")
+        print("   Le traçage ne fonctionnera pas sans clé API")
 else:
-    print("⚠️  LangSmith désactivé - Définir LANGSMITH_TRACING=true")
+    LANGSMITH_ENABLED = False
+    print("⚠️  LangSmith désactivé - Définir LANGSMITH_TRACING=true dans .env")
+
+
+# =============================
+#   CONFIGURATION MISTRAL AI
+# =============================
+
+# Variable d'environnement requise pour Mistral AI (à définir dans .env)
+# MISTRAL_API_KEY=votre_clé_api_mistral
+
+# Vérification de la clé API Mistral
+MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY")
+
+if not MISTRAL_API_KEY:
+    print("❌ ERREUR: MISTRAL_API_KEY non définie")
+    print("   Ajoutez MISTRAL_API_KEY=votre_clé dans le fichier .env")
+    raise ValueError("MISTRAL_API_KEY est requis pour utiliser le modèle Mistral AI")
+else:
+    print("✅ Clé API Mistral configurée")
 
 
 # =============================
@@ -270,21 +306,37 @@ async def generer_reponse_llm(voyage: Dict, criteres: Dict, message: str) -> str
     
     Tracé dans LangSmith pour monitorer les appels LLM et réponses
     """
-    model = init_chat_model("mistral-small-latest", model_provider="mistralai")
+    try:
+        model = init_chat_model("mistral-small-latest", model_provider="mistralai")
+        
+        # Filtrer les critères actifs (non-None)
+        criteres_actifs = {k: v for k, v in criteres.items() if v is not None}
+        
+        prompt = PROMPT_GENERATION.format(
+            message=message,
+            criteres=criteres_actifs,
+            nom=voyage["nom"],
+            labels=", ".join(voyage["labels"]),
+            accessible="Oui" if voyage["accessibleHandicap"] else "Non"
+        )
+        
+        response = await model.ainvoke(prompt)
+        return response.content
     
-    # Filtrer les critères actifs (non-None)
-    criteres_actifs = {k: v for k, v in criteres.items() if v is not None}
-    
-    prompt = PROMPT_GENERATION.format(
-        message=message,
-        criteres=criteres_actifs,
-        nom=voyage["nom"],
-        labels=", ".join(voyage["labels"]),
-        accessible="Oui" if voyage["accessibleHandicap"] else "Non"
-    )
-    
-    response = await model.ainvoke(prompt)
-    return response.content
+    except Exception as e:
+        # Log de l'erreur pour le débogage
+        print(f"❌ Erreur lors de la génération de réponse: {type(e).__name__}: {str(e)}")
+        
+        # Retourner une réponse de secours user-friendly
+        return f"""Je vous recommande : {voyage['nom']}
+
+Ce voyage correspond à vos critères. Malheureusement, je rencontre un problème technique pour générer une description détaillée.
+
+Caractéristiques :
+- Type: {', '.join(voyage['labels'])}
+- Accessibilité PMR: {'Oui' if voyage['accessibleHandicap'] else 'Non'}
+
+Souhaitez-vous plus d'informations ou explorer d'autres options ?"""
 
 
 # =============================
@@ -312,14 +364,37 @@ async def process_message(state: State) -> Dict[str, Any]:
     message = state.dernier_message_utilisateur
     
     # 1. EXTRACTION avec structured output
-    model = init_chat_model("mistral-small-latest", model_provider="mistralai")
-    model_struct = model.with_structured_output(Criteres)
+    try:
+        model = init_chat_model("mistral-small-latest", model_provider="mistralai")
+        model_struct = model.with_structured_output(Criteres)
+        
+        prompt_extraction = PROMPT_EXTRACTION.format(message=message)
+        extraits = await model_struct.ainvoke(prompt_extraction)
+        
+        # Log des critères extraits (visible dans LangSmith)
+        print(f"📊 Critères extraits: {extraits.dict()}")
     
-    prompt_extraction = PROMPT_EXTRACTION.format(message=message)
-    extraits = await model_struct.ainvoke(prompt_extraction)
-    
-    # Log des critères extraits (visible dans LangSmith)
-    print(f"📊 Critères extraits: {extraits.dict()}")
+    except Exception as e:
+        # Log de l'erreur pour le débogage
+        print(f"❌ Erreur lors de l'extraction des critères: {type(e).__name__}: {str(e)}")
+        
+        # En cas d'erreur d'extraction, retourner un message d'erreur user-friendly
+        message_erreur = """Je rencontre un problème technique pour analyser votre demande.
+
+Pourriez-vous reformuler votre demande en précisant vos préférences parmi :
+- Plage
+- Montagne  
+- Ville
+- Sport
+- Détente
+- Accessibilité PMR
+
+Exemple : "Je cherche un séjour à la plage avec détente" """
+        
+        return {
+            "dernier_message_ia": message_erreur,
+            "criteres": {k: None for k in state.criteres}
+        }
     
     # 2. RESET OBLIGATOIRE des critères (pas d'héritage entre tours)
     nouveaux_criteres = {k: None for k in state.criteres}

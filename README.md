@@ -150,6 +150,12 @@ Licence **MIT** (voir `pyproject.toml`).
 
 2. **Étendre le graphe** : ajoutez ou modifiez les nœuds et les liens dans `src/agent/graph.py` pour orchestrer des workflows plus complexes.
 
+### execution local avec le sript agent/demo_agent_multi_turn.py
+
+```bash
+cd agent ; python demo_agent_multi_turn.py
+```
+
 ---
 
 ## 🧪 Développement
