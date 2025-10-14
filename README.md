@@ -20,7 +20,7 @@ Ce dépôt est un **starter** pour créer un agent basé sur **LangGraph** et **
 
 ## 1) Prérequis
 
-- **Python 3.9+** (3.11/3.12 recommandé)
+- **Python 3.12+** 
 - **Git**
 - Une **clé API Mistral** (variable d’environnement `MISTRAL_API_KEY`)
 
@@ -59,7 +59,9 @@ source .venv/bin/activate  # (Windows: .venv\Scripts\activate)
 pip install -e .
 pip install '.[dev]' 'langgraph-cli[inmem]>=0.2.8' 'pytest>=8.3.5' 'anyio>=4.7.0'
 ```
-
+## Déploiement Render
+Build Command: pip install -e . && pip install 'langgraph-cli[inmem]>=0.2.8'
+Start Command: langgraph dev
 ---
 
 ## 4) Variables d’environnement
