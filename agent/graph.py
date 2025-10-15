@@ -1,4 +1,4 @@
-"""Agent de recommandation de voyages - Examen RNCP37805BC03
+"""Agent de recommandation de voyages -
 
 Architecture minimaliste : 1 nœud unique
 Structured output : extraction de 6 critères booléens
@@ -352,7 +352,7 @@ Souhaitez-vous plus d'informations ou explorer d'autres options ?"""
 )
 async def process_message(state: State) -> Dict[str, Any]:
     """
-    Nœud unique - Cycle complet conforme examen :
+    Nœud unique - Cycle complet  :
     1. Extraction structured output
     2. RESET critères (obligatoire)
     3. Application nouveaux critères
