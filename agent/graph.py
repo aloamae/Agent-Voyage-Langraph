@@ -88,6 +88,7 @@ class Criteres(BaseModel):
     acces_handicap: Optional[bool] = Field(None, description="Accessibilité PMR, handicap")
 
 
+
 # =============================
 #   STATE (conforme examen)
 # =============================
@@ -104,7 +105,8 @@ class State:
             "ville": None,
             "sport": None,
             "detente": None,
-            "acces_handicap": None
+            "acces_handicap": None,
+          
         }
     )
 
@@ -118,7 +120,8 @@ VOYAGES = [
     {
         "nom": "5 étoiles à Chamonix option ski",
         "labels": ["montagne", "sport"],
-        "accessibleHandicap": False
+        "accessibleHandicap": False,
+    
     },
     {
         "nom": "5 étoiles à Chamonix option fondue",
@@ -157,6 +160,7 @@ RÈGLES D'EXTRACTION :
 - false = avis NÉGATIF explicite (ex: "pas de", "sans", "éviter")
 - null  = critère NON mentionné dans le message
 
+
 EXEMPLES :
 - "sport en montagne" → sport=true, montagne=true, autres=null
 - "plage sans sport" → plage=true, sport=false, autres=null
@@ -187,9 +191,15 @@ VOYAGE : {nom}
 LABELS : {labels}
 ACCESSIBLE HANDICAP : {accessible}
 
+RÈGLE ABSOLUE - NOM DU VOYAGE :
+Tu DOIS utiliser EXACTEMENT le nom du voyage tel que fourni : "{nom}"
+NE PAS reformuler, paraphraser, traduire ou inventer un autre nom.
+NE PAS remplacer par le nom d'une vraie ville ou destination.
+
 Rédige 3-4 phrases courtes :
 - Reformule la demande (critères actifs seulement)
-- Présente le voyage (nom + points forts pertinents)
+- Présente le voyage en citant son nom EXACT : "{nom}"
+- Explique pourquoi il correspond aux critères
 - Termine par : "Souhaitez-vous préciser pour d'autres idées ?"
 
 AUCUN emoji. Ton professionnel."""
