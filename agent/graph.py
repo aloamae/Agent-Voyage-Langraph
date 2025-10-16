@@ -125,12 +125,12 @@ VOYAGES = [
     },
     {
         "nom": "5 étoiles à Chamonix option fondue",
-        "labels": ["montagne", "detente"],
+        "labels": ["montagne", "detente",],
         "accessibleHandicap": True
     },
     {
         "nom": "Palavas de paillotes en paillotes",
-        "labels": ["plage", "ville", "detente"],
+        "labels": ["plage", "ville", "detente", "paillote"],
         "accessibleHandicap": True
     },
     {
@@ -153,7 +153,7 @@ VOYAGES = [
 PROMPT_EXTRACTION = """Tu es un extracteur de critères de voyage.
 
 CRITÈRES (6 clés JSON obligatoires) :
-- plage, montagne, ville, sport, detente, acces_handicap
+- montagne, plage,  ville, sport, detente, acces_handicap
 
 RÈGLES D'EXTRACTION :
 - true  = avis POSITIF explicite (ex: "je veux", "j'aime", "avec")
